@@ -20,3 +20,4 @@ werkzeug==2.3.7
 wtforms==3.0.1
 builtwith
 builtwith
+cryptography

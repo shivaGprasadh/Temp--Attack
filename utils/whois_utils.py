@@ -23,13 +23,21 @@ def scan_whois(url):
     
     try:
         # Extract domain from URL
-        parsed_url = urlparse(url)
+        parsed_url = urlparse(url if url.startswith(('http://', 'https://')) else f'http://{url}')
         domain = parsed_url.netloc or parsed_url.path
         if ':' in domain:  # Remove port if present
             domain = domain.split(':')[0]
         
+        if not domain:
+            logging.error("Invalid domain name")
+            return result
+            
         # Get WHOIS information
         whois_info = whois.whois(domain)
+        
+        if not whois_info or not any(whois_info.values()):
+            logging.error(f"No WHOIS data found for domain: {domain}")
+            return result
         
         # Store domain name
         if whois_info.domain_name:

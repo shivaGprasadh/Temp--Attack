@@ -4,6 +4,8 @@ import logging
 import subprocess
 from urllib.parse import urlparse
 
+import re
+
 def scan_http_headers(url):
     """
     Scan HTTP headers for security issues
@@ -21,7 +23,8 @@ def scan_http_headers(url):
         'server_info': None,
         'csp_issues': None,
         'cors_policy': None,
-        'has_cors': False
+        'has_cors': False,
+        'redirect_to_https': False
     }
 
     # List of security headers to check
@@ -89,17 +92,13 @@ def scan_http_headers(url):
     ]
 
     try:
-        # Use curl to get headers with improved options
-        user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        # Use curl to get headers with specified options
         command = [
-            'curl', '-v', '-D', '-',
-            '--max-time', '30',
-            '--connect-timeout', '10',
-            '--retry', '5',
+            'curl', '-s', '-D', '-', '-o', '/dev/null',
+            '--http1.1', '-L', '-k',
+            '--retry', '3',
             '--retry-delay', '2',
-            '--retry-connrefused',
-            '--retry-max-time', '60',
-            '-A', user_agent,
+            '-A', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             '-H', 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             '-H', 'Accept-Language: en-US,en;q=0.5',
             '-H', 'Connection: keep-alive',
@@ -112,32 +111,44 @@ def scan_http_headers(url):
                 https_url = url.replace('http://', 'https://')
                 process = subprocess.run(command[:-1] + [https_url], capture_output=True, text=True, check=True)
 
-            # Parse headers from stderr where curl -v outputs them 
+            # Parse headers from stdout where curl -D outputs them
             headers = {}
             cors_policy = {}
-            header_lines = process.stderr.split('\n')
+            header_lines = process.stdout.split('\n')
             in_response_headers = False
 
+            # Use regex to parse headers more accurately
+            header_pattern = re.compile(r'^([\w-]+):\s*(.+)$', re.I)
+            redirect_pattern = re.compile(r'^HTTP/\d\.\d\s+30[12378]\s+')
+            location_pattern = re.compile(r'^location:\s*(https?://[^\s]+)', re.I)
+            
             for line in header_lines:
                 line = line.strip()
-                if line.startswith('< HTTP/'): # Start of response headers
+                
+                # Check for redirects
+                if redirect_pattern.match(line):
                     in_response_headers = True
                     continue
-                elif line.startswith('< '): # Response header
-                    if not in_response_headers:
-                        continue
-                    line = line[2:] # Remove '< ' prefix
-                    if ':' in line:
-                        key, value = line.split(':', 1)
-                        key = key.strip().lower()  # Convert to lowercase for consistent comparison
-                        value = value.strip()
-                        headers[key] = value
-
-                        # Check for all CORS-related headers including cross-origin policies
-                        if key.startswith('cross-origin-') or key.startswith('access-control-'):
-                            cors_policy[key] = value
-                            result['cors_policy'] = json.dumps(cors_policy)
-                            result['has_cors'] = True
+                    
+                # Parse headers
+                header_match = header_pattern.match(line)
+                if header_match:
+                    key = header_match.group(1).lower()
+                    value = header_match.group(2).strip()
+                    headers[key] = value
+                    
+                    # Check for HTTPS redirect in Location header
+                    if key == 'location':
+                        loc_match = location_pattern.match(line)
+                        if loc_match and 'https://' in loc_match.group(1):
+                            result['redirect_to_https'] = True
+                    
+                    # Check for CORS headers
+                    if key.startswith('cross-origin-') or key.startswith('access-control-'):
+                        cors_policy[key] = value
+                        result['cors_policy'] = json.dumps(cors_policy)
+                        result['has_cors'] = True
+                        
                 elif line == '': # Empty line marks end of headers
                     in_response_headers = False
 
@@ -277,6 +288,38 @@ def check_https_redirect(url):
     result = {
         'redirects_to_https': False
     }
+    
+    # Parse URL and ensure we test HTTP
+    parsed_url = urlparse(url)
+    hostname = parsed_url.netloc or parsed_url.path
+    test_url = f"http://{hostname}"
+    
+    try:
+        # Use curl to follow redirects and check final URL
+        command = [
+            'curl', '-sIL', '-o', '/dev/null', '-w', '%{url_effective}', 
+            '--max-time', '10',
+            '--retry', '2',
+            test_url
+        ]
+        
+        process = subprocess.run(command, capture_output=True, text=True, check=False)
+        
+        if process.returncode == 0 and 'https://' in process.stdout:
+            result['redirects_to_https'] = True
+            return result
+            
+        # Check HSTS header as alternative indicator
+        command = ['curl', '-sI', test_url]
+        process = subprocess.run(command, capture_output=True, text=True, check=False)
+        
+        if 'strict-transport-security' in process.stdout.lower():
+            result['redirects_to_https'] = True
+            
+    except Exception as e:
+        logging.error(f"HTTPS redirect check error: {str(e)}")
+        
+    return result
 
     try:
         # Ensure URL uses HTTP
@@ -297,7 +340,7 @@ def check_https_redirect(url):
 
         try:
             process = subprocess.run(command, capture_output=True, text=True, check=True)
-            
+
             # Parse headers from the output
             headers = {}
             for line in process.stdout.split('\n'):
@@ -318,11 +361,11 @@ def check_https_redirect(url):
                                 (location.startswith('/') and 'location' in headers)):
                                 result['redirects_to_https'] = True
                                 break
-            
+
             # Additional check for HSTS header
             if 'strict-transport-security' in headers:
                 result['redirects_to_https'] = True
-                
+
         except subprocess.CalledProcessError as e:
             logging.error(f"Curl command failed: {e.stderr}")
             # Some servers close HTTP connections as security measure
@@ -368,7 +411,7 @@ def check_https_redirect(url):
                                                verify=False,
                                                headers=headers,
                                                allow_redirects=True)
-                    
+
                     # Check redirect chain
                     if http_response.history:
                         for r in http_response.history:
@@ -378,21 +421,21 @@ def check_https_redirect(url):
                                    (location.startswith('/') and http_response.url.startswith('https://')):
                                     result['redirects_to_https'] = True
                                     break
-                    
+
                     # Check final URL
                     if http_response.url.startswith('https://'):
                         result['redirects_to_https'] = True
-                    
+
                     # Check HSTS header
                     if 'Strict-Transport-Security' in http_response.headers:
                         result['redirects_to_https'] = True
-                        
+
                 except requests.exceptions.RequestException as e:
                     if "Connection refused" in str(e) or \
                        "Connection reset by peer" in str(e):
                         # Some servers close HTTP connections as a security measure
                         result['redirects_to_https'] = True
-                        
+
         except requests.exceptions.RequestException:
             pass  # HTTPS not available
 

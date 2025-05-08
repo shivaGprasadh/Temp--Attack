@@ -44,7 +44,7 @@
                                     <i class="fas fa-globe fa-2x text-info me-3"></i>
                                 </div>
                                 <div class="flex-grow-1">
-                                    <h5 class="mb-1">Target: {{ scan.target_url }}</h5>
+                                    <h5 class="mb-1">Target: {{ scan.target_url.replace('http://', '').replace('https://', '') }}</h5>
                                     <p class="mb-0 text-muted">Scan initiated: {{ scan.scan_date.strftime('%Y-%m-%d %H:%M:%S UTC') }}</p>
                                 </div>
                             </div>
@@ -236,11 +236,6 @@
                                     </li>
 
                                     <li class="nav-item" role="presentation">
-                                        <button class="nav-link" id="cors-tab" data-bs-toggle="tab" data-bs-target="#cors-content" type="button" role="tab" aria-controls="cors-content" aria-selected="false">
-                                            <i class="fas fa-exchange-alt me-1"></i> CORS Info
-                                        </button>
-                                    </li>
-                                    <li class="nav-item" role="presentation">
                                         <button class="nav-link" id="csp-tab" data-bs-toggle="tab" data-bs-target="#csp-content" type="button" role="tab" aria-controls="csp-content" aria-selected="false">
                                             <i class="fas fa-shield-alt me-1"></i> CSP
                                         </button>
@@ -248,6 +243,11 @@
                                     <li class="nav-item" role="presentation">
                                         <button class="nav-link" id="https-tab" data-bs-toggle="tab" data-bs-target="#https-content" type="button" role="tab" aria-controls="https-content" aria-selected="false">
                                             <i class="fas fa-lock me-1"></i> HTTPS
+                                        </button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="cors-tab" data-bs-toggle="tab" data-bs-target="#cors-content" type="button" role="tab" aria-controls="cors-content" aria-selected="false">
+                                            <i class="fas fa-exchange-alt me-1"></i> CORS
                                         </button>
                                     </li>
                                     </ul>
@@ -640,17 +640,17 @@
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                        </div>
+                        </div>
                                                     </div>
                                                 {% endif %}
-                                            {% else %}
+                                            {%else %}
                                                 <div class="alert alert-warning">
                                                     <i class="fas fa-exclamation-triangle me-2"></i>
                                                     <strong>No SSL Certificate Found</strong> - This website does not use HTTPS or SSL/TLS.
                                                 </div>
                                                 <div class="card bg-dark border-danger mt-4">
                                                     <div class="card-header bg-danger text-white">
-                                                        <h6 class="mb-0">Security Risk: Missing SSL/TLS</h6>
+                                                        <h6 class="mb0">Security Risk: Missing SSL/TLS</h6>
                                                     </div>
                                                     <div class="card-body">
                                                         <div class="row">
@@ -860,472 +860,6 @@
                                     </div>
 
 
-
-                                    <!-- CORS Information Tab -->
-                                    <div class="tab-pane fade" id="cors-content" role="tabpanel" aria-labelledby="cors-tab">
-                                        <h5 class="card-title mb-3">CORS Configuration Analysis</h5>
-
-                                        <!-- Show detected CORS headers -->
-                                        {% if scan.http_scan and scan.http_scan.headers %}
-                                            {% set headers = scan.http_scan.headers|fromjson %}
-                                            {% set has_cors = false %}
-                                            {% set cors_header = "" %}
-
-                                            {% for key, value in headers.items() %}
-                                                {% if key.lower() == 'access-control-allow-origin' %}
-                                                    {% set has_cors = true %}
-                                                    {% set cors_header = value %}
-                                                {% endif %}
-                                            {% endfor %}
-
-                                            <div class="alert alert-info mb-4">
-                                                <h6 class="alert-heading"><i class="fas fa-info-circle me-2"></i>Detected CORS Headers:</h6>
-                                                <div class="mt-2">
-                                                    <div class="d-flex p-2 bg-dark border border-secondary rounded">
-                                                        <strong class="me-2">Access-Control-Allow-Origin:</strong>
-                                                        <code>{{ cors_header }}</code>
-                                                    </div>
-
-                                                    {% for key, value in headers.items() %}
-                                                        {% if key.lower() == 'access-control-allow-methods' 
-                                                            or key.lower() == 'access-control-allow-headers' 
-                                                            or key.lower() == 'access-control-max-age'
-                                                            or key.lower() == 'access-control-allow-credentials' %}
-                                                            <div class="d-flex p-2 mt-2 bg-dark border border-secondary rounded text-light">
-                                                                <strong class="me-2">{{ key }}:</strong>
-                                                                <code class="text-light">{{ value }}</code>
-                                                            </div>
-                                                        {% endif %}
-                                                    {% endfor %}
-                                                </div>
-                                            </div>
-                                        {% endif %}
-
-                                        {% if scan.cors_scan %}
-                                            {% if scan.cors_scan.has_cors %}
-                                                <!-- CORS Overview Card -->
-                                                <div class="card bg-dark border-secondary mb-4">
-                                                    <div class="card-header bg-dark">
-                                                        <h6 class="mb-0">
-                                                            <i class="fas fa-shield-alt me-2"></i>
-                                                            CORS Security Status
-                                                        </h6>
-                                                    </div>
-                                                    <div class="card-body">
-                                                        {% if scan.cors_scan.issues %}
-                                                            {% set issues = scan.cors_scan.issues|fromjson %}
-                                                            {% set has_critical = false %}
-                                                            {% set has_high = false %}
-                                                            {% for issue in issues %}
-                                                                {% if issue.severity == 'critical' %}
-                                                                    {% set has_critical = true %}
-                                                                {% elif issue.severity == 'high' %}
-                                                                    {% set has_high = true %}
-                                                                {% endif %}
-                                                            {% endfor %}
-
-                                                            {% if has_critical %}
-                                                                <div class="alert alert-danger mb-3">
-                                                                    <div class="d-flex align-items-center">
-                                                                        <div class="fs-1 me-3">
-                                                                            <i class="fas fa-exclamation-triangle"></i>
-                                                                        </div>
-                                                                        <div>
-                                                                            <h5 class="alert-heading">Critical CORS Misconfiguration Detected!</h5>
-                                                                            <p>This website has critical CORS security issues that could allow attackers to perform cross-origin attacks and steal sensitive data.</p>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            {% elif has_high %}
-                                                                <div class="alert alert-warning mb-3">
-                                                                    <div class="d-flex align-items-center">
-                                                                        <div class="fs-1 me-3">
-                                                                            <i class="fas fa-exclamation-circle"></i>
-                                                                        </div>
-                                                                        <div>
-                                                                            <h5 class="alert-heading">High-Risk CORS Misconfiguration Detected!</h5>
-                                                                            <p>This website has significant CORS security issues that could potentially expose sensitive data to unauthorized domains.</p>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            {% else %}
-                                                                <div class="alert alert-info mb-3">
-                                                                    <div class="d-flex align-items-center">
-                                                                        <div class="fs-1 me-3">
-                                                                            <i class="fas fa-info-circle"></i>
-                                                                        </div>
-                                                                        <div>
-                                                                            <h5 class="alert-heading">Minor CORS Issues Detected</h5>
-                                                                            <p>This website has some low or medium-risk CORS configuration issues that should be addressed but aren't immediately critical.</p>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            {% endif %}
-                                                        {% else %}
-                                                            <div class="alert alert-success mb-3">
-                                                                <div class="d-flex align-items-center">
-                                                                    <div class="fs-1 me-3">
-                                                                        <i class="fas fa-check-circle"></i>
-                                                                    </div>
-                                                                    <div>
-                                                                        <h5 class="alert-heading">CORS Configuration Appears Secure</h5>
-                                                                        <p>No obvious CORS misconfigurations were detected in the website's cross-origin resource sharing policy.</p>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        {% endif %}
-
-                                                        <div class="row">
-                                                            <div class="col-md-4 mb-3">
-                                                                <div class="card border-secondary h-100">
-                                                                    <div class="card-body text-center">
-                                                                        <div class="display-4 mb-2 text-info">
-                                                                            <i class="fas fa-globe"></i>
-                                                                        </div>
-                                                                        <h5 class="card-title">Cross-Origin Access</h5>
-                                                                        <p class="card-text">
-                                                                            {% if scan.cors_scan.cors_policy %}
-                                                                                {% set policy = scan.cors_scan.cors_policy|fromjson %}
-                                                                                {% if policy.get('Access-Control-Allow-Origin') == '*' %}
-                                                                                    <span class="badge bg-danger">Allows Any Origin</span>
-                                                                                {% elif policy.get('Access-Control-Allow-Origin') == 'null' %}
-                                                                                    <span class="badge bg-danger">Allows Null Origin</span>
-                                                                                {% elif policy.get('Access-Control-Allow-Origin') %}
-                                                                                    <span class="badge bg-success">Specific Origin(s)</span>
-                                                                                {% else %}
-                                                                                    <span class="badge bg-secondary">Undefined</span>
-                                                                                {% endif %}
-                                                                            {% else %}
-                                                                                <span class="badge bg-secondary">Unknown</span>
-                                                                            {% endif %}
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4 mb-3">
-                                                                <div class="card border-secondary h-100">
-                                                                    <div class="card-body text-center">
-                                                                        <div class="display-4 mb-2 text-info">
-                                                                            <i class="fas fa-user-shield"></i>
-                                                                        </div>
-                                                                        <h5 class="card-title">Credentials</h5>
-                                                                        <p class="card-text">
-                                                                            {% if scan.cors_scan.cors_policy %}
-                                                                                {% set policy = scan.cors_scan.cors_policy|fromjson %}
-                                                                                {% if policy.get('Access-Control-Allow-Credentials') == 'true' %}
-                                                                                    <span class="badge bg-warning text-dark">Credentials Allowed</span>
-                                                                                {% elif policy.get('Access-Control-Allow-Credentials') == 'false' %}
-                                                                                    <span class="badge bg-success">Credentials Blocked</span>
-                                                                                {% else %}
-                                                                                    <span class="badge bg-secondary">Not Specified</span>
-                                                                                {% endif %}
-                                                                            {% else %}
-                                                                                <span class="badge bg-secondary">Unknown</span>
-                                                                            {% endif %}
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4 mb-3">
-                                                                <div class="card border-secondary h-100">
-                                                                    <div class="card-body text-center">
-                                                                        <div class="display-4 mb-2 text-info">
-                                                                            <i class="fas fa-exchange-alt"></i>
-                                                                        </div>
-                                                                        <h5 class="card-title">Methods</h5>
-                                                                        <p class="card-text">
-                                                                            {% if scan.cors_scan.cors_policy %}
-                                                                                {% set policy = scan.cors_scan.cors_policy|fromjson %}
-                                                                                {% if policy.get('Access-Control-Allow-Methods') %}
-                                                                                    {% if '*' in policy.get('Access-Control-Allow-Methods') %}
-                                                                                        <span class="badge bg-danger">All Methods</span>
-                                                                                    {% elif 'PUT' in policy.get('Access-Control-Allow-Methods') or 'DELETE' in policy.get('Access-Control-Allow-Methods') %}
-                                                                                        <span class="badge bg-warning text-dark">Write Methods</span>
-                                                                                    {% else %}
-                                                                                        <span class="badge bg-success">Limited Methods</span>
-                                                                                    {% endif %}
-                                                                                {% else %}
-                                                                                    <span class="badge bg-secondary">Not Specified</span>
-                                                                                {% endif %}
-                                                                            {% else %}
-                                                                                <span class="badge bg-secondary">Unknown</span>
-                                                                            {% endif %}
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <!-- CORS Policy Details -->
-                                                <div class="row mb-4">
-                                                    <div class="col-md-12">
-                                                        <div class="card bg-dark border-secondary">
-                                                            <div class="card-header bg-dark">
-                                                                <h6 class="mb-0">CORS Headers</h6>
-                                                            </div>
-                                                            <div class="card-body">
-                                                                <div class="table-responsive">
-                                                                    <table class="table table-dark table-bordered">
-                                                                        <thead>
-                                                                            <tr>
-                                                                                <th>Header Name</th>
-                                                                                <th>Value</th>
-                                                                            </tr>
-                                                                        </thead>
-                                                                        <tbody>
-                                                                            {% if scan.http_scan and scan.http_scan.headers %}
-                                                                                {% set headers = scan.http_scan.headers|fromjson %}
-                                                                                {% for key, value in headers.items() %}
-                                                                                    {% if key.lower().startswith('access-control-') %}
-                                                                                    <tr>
-                                                                                        <td><code>{{ key }}</code></td>
-                                                                                        <td><code class="text-break">{{ value }}</code></td>
-                                                                                    </tr>
-                                                                                    {% endif %}
-                                                                                {% endfor %}
-                                                                            {% else %}
-                                                                                <tr>
-                                                                                    <td colspan="2" class="text-center">No CORS headers found</td>
-                                                                                </tr>
-                                                                            {% endif %}
-                                                                        </tbody>
-                                                                    </table>
-                                                                </div>
-                                                            </div>
-                                                                <div class="table-responsive">
-                                                                    <table class="table table-dark table-bordered mb-0">
-                                                                        <thead>
-                                                                            <tr>
-                                                                                <th>Header</th>
-                                                                                <th>Value</th>
-                                                                                <th>Security</th>
-                                                                            </tr>
-                                                                        </thead>
-                                                                        <tbody>
-                                                                            {% if scan.cors_scan.cors_policy %}
-                                                                                {% set policy = scan.cors_scan.cors_policy|fromjson %}
-                                                                                {% for header, value in policy.items() %}
-                                                                                    <tr>
-                                                                                        <td><strong>{{ header }}</strong></td>
-                                                                                        <td>{{ value }}</td>
-                                                                                        <td>
-                                                                                            {% if header == 'Access-Control-Allow-Origin' %}
-                                                                                                {% if value == '*' %}
-                                                                                                    <span class="badge bg-danger">Insecure</span>
-                                                                                                {% elif value == 'null' %}
-                                                                                                    <span class="badge bg-danger">Insecure</span>
-                                                                                                {% else %}
-                                                                                                    <span class="badge bg-success">Secure</span>
-                                                                                                {% endif %}
-                                                                                            {% elif header == 'Access-Control-Allow-Credentials' %}
-                                                                                                {% if value == 'true' %}
-                                                                                                    <span class="badge bg-warning text-dark">Caution</span>
-                                                                                                {% else %}
-                                                                                                    <span class="badge bg-success">Secure</span>
-                                                                                                {% endif %}
-                                                                                            {% elif header == 'Access-Control-Allow-Methods' %}
-                                                                                                {% if '*' in value %}
-                                                                                                    <span class="badge bg-danger">Insecure</span>
-                                                                                                {% elif 'PUT' in value or 'DELETE' in value %}
-                                                                                                    <span class="badge bg-warning text-dark">Caution</span>
-                                                                                                {% else %}
-                                                                                                    <span class="badge bg-success">Secure</span>
-                                                                                                {% endif %}
-                                                                                            {% elif header == 'Access-Control-Allow-Headers' %}
-                                                                                                {% if '*' in value %}
-                                                                                                    <span class="badge bg-warning text-dark">Caution</span>
-                                                                                                {% else %}
-                                                                                                    <span class="badge bg-success">Secure</span>
-                                                                                                {% endif %}
-                                                                                            {% else %}
-                                                                                                <span class="badge bg-info">Info</span>
-                                                                                            {% endif %}
-                                                                                        </td>
-                                                                                    </tr>
-                                                                                {% endfor %}
-                                                                            {% else %}
-                                                                                <tr>
-                                                                                    <td colspan="3" class="text-center">No CORS headers found</td>
-                                                                                </tr>
-                                                                            {% endif %}
-                                                                        </tbody>
-                                                                    </table>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div class="col-md-6">
-                                                        <div class="card bg-dark border-secondary h-100">
-                                                            <div class="card-header bg-dark">
-                                                                <h6 class="mb-0">
-                                                                    <i class="fas fa-book me-2"></i>
-                                                                    CORS Best Practices
-                                                                </h6>
-                                                            </div>
-                                                            <div class="card-body">
-                                                                <ol class="pl-4">
-                                                                    <li class="mb-2">
-                                                                        <strong>Restrict origins</strong> - Only allow specific trusted domains instead of using wildcards (<code>*</code>).
-                                                                    </li>
-                                                                    <li class="mb-2">
-                                                                        <strong>Avoid null origin</strong> - Never allow the <code>null</code> origin as it can be spoofed by attackers.
-                                                                    </li>
-                                                                    <li class="mb-2">
-                                                                        <strong>Be careful with credentials</strong> - When using <code>Access-Control-Allow-Credentials: true</code>, never use a wildcard origin.
-                                                                    </li>
-                                                                    <li class="mb-2">
-                                                                        <strong>Limit methods</strong> - Only allow necessary HTTP methods, especially for sensitive operations.
-                                                                    </li>
-                                                                    <li class="mb-2">
-                                                                        <strong>Specify allowed headers</strong> - Explicitly list allowed headers instead of using wildcards.
-                                                                    </li>
-                                                                </ol>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Test Results -->
-                                                {% if scan.cors_scan.test_results %}
-                                                <div class="card bg-dark border-secondary mb-4">
-                                                    <div class="card-header bg-dark">
-                                                        <h6 class="mb-0">
-                                                            <i class="fas fa-flask me-2"></i>
-                                                            Origin Test Results
-                                                        </h6>
-                                                    </div>
-                                                    <div class="card-body p-0">
-                                                        <div class="table-responsive">
-                                                            <table class="table table-dark table-bordered mb-0">
-                                                                <thead>
-                                                                    <tr>
-                                                                        <th>Origin</th>
-                                                                        <th>Allowed</th>
-                                                                        <th>Response</th>
-                                                                        <th>Risk</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    {% set test_results = scan.cors_scan.test_results|fromjson %}
-                                                                    {% for test in test_results %}
-                                                                        <tr>
-                                                                            <td>
-                                                                                {% if test.origin in ['null', '*'] %}
-                                                                                    <code>{{ test.origin }}</code>
-                                                                                {% else %}
-                                                                                    {{ test.origin }}
-                                                                                {% endif %}
-                                                                            </td>
-                                                                            <td>
-                                                                                {% if test.is_allowed %}
-                                                                                    <i class="fas fa-check-circle text-success"></i>
-                                                                                {% else %}
-                                                                                    <i class="fas fa-times-circle text-danger"></i>
-                                                                                {% endif %}
-                                                                            </td>
-                                                                            <td>
-                                                                                {% if test.response_headers %}
-                                                                                    {% if test.response_headers.get('Access-Control-Allow-Origin') %}
-                                                                                        <code>{{ test.response_headers.get('Access-Control-Allow-Origin') }}</code>
-                                                                                    {% else %}
-                                                                                        <span class="text-muted">No ACAO header</span>
-                                                                                    {% endif %}
-                                                                                {% else %}
-                                                                                    <span class="text-muted">No headers</span>
-                                                                                {% endif %}
-                                                                            </td>
-                                                                            <td>
-                                                                                {% if test.is_allowed %}
-                                                                                    {% if test.origin == '*' or test.origin == 'null' %}
-                                                                                        <span class="badge bg-danger">High</span>
-                                                                                    {% elif 'evil' in test.origin or 'attack' in test.origin or 'malicious' in test.origin or 'localhost' in test.origin %}
-                                                                                        <span class="badge bg-danger">High</span>
-                                                                                    {% elif test.response_headers.get('Access-Control-Allow-Credentials') == 'true' %}
-                                                                                        <span class="badge bg-warning text-dark">Medium</span>
-                                                                                    {% else %}
-                                                                                        <span class="badge bg-success">Low</span>
-                                                                                    {% endif %}
-                                                                                {% else %}
-                                                                                    <span class="badge bg-success">None</span>
-                                                                                {% endif %}
-                                                                            </td>
-                                                                        </tr>
-                                                                    {% endfor %}
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                {% endif %}
-
-                                                <!-- CORS Issues -->
-                                                {% if scan.cors_scan.issues %}
-                                                    <div class="card bg-dark border-secondary">
-                                                        <div class="card-header bg-dark">
-                                                            <h6 class="mb-0">
-                                                                <i class="fas fa-bug me-2"></i>
-                                                                CORS Issues & Recommendations
-                                                            </h6>
-                                                        </div>
-                                                        <div class="card-body p-0">
-                                                            <div class="list-group list-group-flush border-top-0">
-                                                                {% for issue in scan.cors_scan.issues|fromjson %}
-                                                                    <div class="list-group-item bg-dark border-secondary">
-                                                                        <div class="d-flex">
-                                                                            {% if issue.severity|lower == 'critical' %}
-                                                                                <div class="badge bg-danger me-3 p-2"><i class="fas fa-times-circle"></i></div>
-                                                                            {% elif issue.severity|lower == 'high' %}
-                                                                                <div class="badge bg-warning text-dark me-3 p-2"><i class="fas fa-exclamation-triangle"></i></div>
-                                                                            {% elif issue.severity|lower == 'medium' %}
-                                                                                <div class="badge bg-primary me-3 p-2"><i class="fas fa-exclamation-circle"></i></div>
-                                                                            {% elif issue.severity|lower == 'low' %}
-                                                                                <div class="badge bg-info text-dark me-3 p-2"><i class="fas fa-info-circle"></i></div>
-                                                                            {% else %}
-                                                                                <div class="badge bg-secondary me-3 p-2"><i class="fas fa-info"></i></div>
-                                                                            {% endif %}
-                                                                            <div>
-                                                                                <h6 class="mb-1">{{ issue.title }}</h6>
-                                                                                <p class="mb-1 text-muted">{{ issue.description }}</p>
-                                                                                {% if issue.recommendation %}
-                                                                                    <small class="text-info">
-                                                                                        <i class="fas fa-lightbulb me-1"></i> 
-                                                                                        {{ issue.recommendation }}
-                                                                                    </small>
-                                                                                {% endif %}
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                {% endfor %}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                {% endif %}
-                                            {% else %}
-                                                <div class="alert alert-info">
-                                                    <div class="d-flex align-items-center">
-                                                        <div class="fs-1 me-3">
-                                                            <i class="fas fa-info-circle"></i>
-                                                        </div>
-                                                        <div>
-                                                            <h5 class="alert-heading">No CORS Policy Detected</h5>
-                                                            <p>This website does not appear to implement Cross-Origin Resource Sharing (CORS) headers. This is expected for static websites or sites that don't need to share resources across origins.</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-
-                                            {% endif %}
-                                        {% else %}
-                                            <div class="alert alert-info">
-                                                <i class="fas fa-info-circle me-2"></i>
-                                                No CORS information available for this scan.
-                                            </div>
-                                        {% endif %}
-                                    </div>
-
                                     <!-- HTTPS Tab -->
                                     <div class="tab-pane fade" id="https-content" role="tabpanel" aria-labelledby="https-tab">
                                         <h5 class="card-title mb-3">HTTPS Configuration</h5>
@@ -1344,8 +878,7 @@
                                                         <div class="alert alert-danger">
                                                             <i class="fas fa-exclamation-triangle me-2"></i> HTTP to HTTPS redirection is not configured.
                                                         </div>
-                                                        <p>The website allows unencrypted HTTP connections without redirecting to the secure HTTPS version.</p>
-                                                        <p class="mb-0 text-warning"><strong>Recommendation:</strong> Configure your web server to automatically redirect all HTTP traffic to HTTPS.</p>
+                                                        <p class="mb-0 text-warning"><strong>Recommendation:</strong> If HTTP protocol supported, Configure your web server to automatically redirect all HTTP traffic to HTTPS.</p>
                                                     {% endif %}
                                                 </div>
                                             </div>
@@ -1354,6 +887,127 @@
                                                 <i class="fas fa-info-circle me-2"></i>
                                                 No HTTPS information available for this scan.
                                             </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <!-- CORS Tab -->
+                                    <div class="tab-pane fade" id="cors-content" role="tabpanel" aria-labelledby="cors-tab">
+                                        <h5 class="card-title mb-3">CORS Configuration Analysis</h5>
+
+                                        <!-- Current CORS Headers -->
+                                        <div class="card bg-dark border-secondary mb-4">
+                                            <div class="card-header bg-dark">
+                                                <h6 class="mb-0">Current CORS Headers</h6>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="table-responsive">
+                                                    <table class="table table-dark table-bordered">
+                                                        <tbody>
+                                                            {% set seen_headers = [] %}
+                                                            {% for header, value in scan.http_scan.headers|fromjson|dictsort %}
+                                                                {% if header.lower().startswith('access-control-') or header.lower().startswith('cross-origin-') %}
+                                                                    {% if header.lower() not in seen_headers %}
+                                                                        {% set _ = seen_headers.append(header.lower()) %}
+                                                                        <tr>
+                                                                            <th>{{ header }}</th>
+                                                                            <td style="word-break: break-all;"><code>{{ value }}</code></td>
+                                                                        </tr>
+                                                                    {% endif %}
+                                                                {% endif %}
+                                                            {% endfor %}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- CORS Findings -->
+                                        {% if scan.cors_findings %}
+                                            {% set findings = scan.cors_findings|fromjson %}
+                                            {% for finding in findings %}
+                                                <div class="card bg-dark border-secondary mb-4">
+                                                    <div class="card-header bg-dark">
+                                                        <h6 class="mb-0">CORS Finding: {{ finding.class }}</h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <div class="table-responsive">
+                                                            <table class="table table-dark table-bordered">
+                                                                <tbody>
+                                                                    <tr>
+                                                                        <th style="width: 30%">Class</th>
+                                                                        <td>{{ finding.class }}</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <th>Description</th>
+                                                                        <td>{{ finding.description }}</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <th>Severity</th>
+                                                                        <td><span class="badge bg-info">{{ finding.severity }}</span></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <th>Exploitation</th>
+                                                                        <td>{{ finding.exploitation }}</td>
+                                                                    </tr>
+                                                                    {% if finding.acao_header %}
+                                                                    <tr>
+                                                                        <th>ACAO Header</th>
+                                                                        <td><code>{{ finding.acao_header }}</code></td>
+                                                                    </tr>
+                                                                    {% endif %}
+                                                                    {% if finding.acac_header %}
+                                                                    <tr>
+                                                                        <th>ACAC Header</th>
+                                                                        <td><code>{{ finding.acac_header }}</code></td>
+                                                                    </tr>
+                                                                    {% endif %}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            {% set findings = scan.cors_findings|fromjson %}
+                                            {% for finding in findings %}
+                                                <div class="card bg-dark border-secondary mb-4">
+                                                    <div class="card-header bg-dark">
+                                                        <h6 class="mb-0">CORS Misconfiguration: {{ finding.class }}</h6>
+                                                    </div>
+                                                    <div class="card-body">
+                                                        <div class="table-responsive">
+                                                            <table class="table table-dark table-bordered">
+                                                                <tbody>
+                                                                    <tr>
+                                                                        <th style="width: 30%">Class</th>
+                                                                        <td>Wildcard value</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <th>Description</th>
+                                                                        <td>This host allows requests made from any origin. However, browsers will block all requests to this host by default.</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <th>Severity</th>
+                                                                        <td><span class="badge bg-info">Low</span></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <th>Exploitation</th>
+                                                                        <td>Not possible</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <th>ACAO Header</th>
+                                                                        <td><code>*</code></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <th>ACAC Header</th>
+                                                                        <td>None</td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
                                         {% endif %}
                                     </div>
 
@@ -1449,8 +1103,8 @@
                                             </div>
 
                                         {% else %}
-                                            <div class="alert alert-info">
-                                                <i class="fas fa-info-circle me-2"></i>
+                                            <div class="alert {% if scan.http_scan %}alert-danger{% else %}alert-info{% endif %}">
+                                                <i class="fas fa-exclamation-triangle me-2"></i>
                                                 {% if scan.http_scan %}
                                                     No Content Security Policy (CSP) headers were detected on this website.
                                                     <div class="mt-2">

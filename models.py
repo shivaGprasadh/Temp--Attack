@@ -218,6 +218,7 @@ class HTTPScan(db.Model):
     insecure_headers = db.Column(db.Text)  # Store JSON array of insecure headers
     server_info = db.Column(db.String(255))  # Server information if disclosed
     csp_issues = db.Column(db.Text)  # Store JSON array of CSP misconfigurations
+    cors_findings = db.Column(db.Text) # Added CORS findings field
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     def get_findings(self):
         findings = []
@@ -262,6 +263,57 @@ class HTTPScan(db.Model):
                     'severity': issue.get('severity', 'medium'),
                     'recommendation': issue.get('recommendation', 'Review and correct Content Security Policy configuration.')
                 })
+
+        # Add CORS findings
+        if hasattr(self, 'cors_findings') and self.cors_findings:
+            cors_data = json.loads(self.cors_findings)
+            for finding in cors_data:
+                # Wildcard Origin with Credentials check
+                if finding.get('acao_header') == '*' and finding.get('acac_header', '').lower() == 'true':
+                    findings.append({
+                        'title': 'CORS: Wildcard Origin with Credentials',
+                        'description': 'The server allows all origins (*) while also enabling credentials, which is an invalid and insecure combination.',
+                        'severity': 'high',
+                        'recommendation': 'Specify exact allowed origins instead of using wildcard when credentials are enabled.'
+                    })
+
+                # Null Origin check
+                if finding.get('acao_header', '').lower() == 'null':
+                    findings.append({
+                        'title': 'CORS: Null Origin Allowed',
+                        'description': 'The server allows requests from null origin, which can be exploited via sandboxed iframes.',
+                        'severity': 'medium',
+                        'recommendation': 'Remove null from allowed origins unless specifically required.'
+                    })
+
+                # Wildcard in Headers/Methods
+                if finding.get('acah_header') == '*' or finding.get('acam_header') == '*':
+                    findings.append({
+                        'title': 'CORS: Overly Permissive Headers/Methods',
+                        'description': 'The server uses wildcards for allowed headers or methods, which may allow unsafe client behavior.',
+                        'severity': 'medium',
+                        'recommendation': 'Explicitly specify allowed headers and methods instead of using wildcards.'
+                    })
+
+                # Missing Vary Header for Dynamic Origins
+                if finding.get('acao_header') != '*' and 'vary' not in [h.lower() for h in finding.get('headers', {})]:
+                    findings.append({
+                        'title': 'CORS: Missing Vary Header',
+                        'description': 'Dynamic CORS origin handling without Vary: Origin header can lead to cache poisoning.',
+                        'severity': 'medium',
+                        'recommendation': 'Add Vary: Origin header when handling dynamic CORS origins.'
+                    })
+
+                # Private/Localhost Origins
+                origin = finding.get('acao_header', '')
+                if any(x in origin for x in ['localhost', '127.0.0.1', '192.168.', '10.', '172.']):
+                    findings.append({
+                        'title': 'CORS: Private Origins Allowed',
+                        'description': f'The server accepts private/localhost origins: {origin}',
+                        'severity': 'high',
+                        'recommendation': 'Remove private network origins from allowed CORS origins.'
+                    })
+
         return findings
 
 
