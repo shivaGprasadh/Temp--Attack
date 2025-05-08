@@ -1,0 +1,37 @@
+Traceback (most recent call last):
+  File "/home/runner/workspace/main.py", line 1, in <module>
+    from app import app  # noqa: F401
+    ^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/app.py", line 53, in <module>
+    db.create_all()
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask_sqlalchemy/extension.py", line 900, in create_all
+    self._call_for_binds(bind_key, "create_all")
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask_sqlalchemy/extension.py", line 881, in _call_for_binds
+    getattr(metadata, op_name)(bind=engine)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/sql/schema.py", line 5813, in create_all
+    bind._run_ddl_visitor(
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 3239, in _run_ddl_visitor
+    conn._run_ddl_visitor(visitorcallable, element, **kwargs)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2443, in _run_ddl_visitor
+    visitorcallable(self.dialect, self, **kwargs).traverse_single(element)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/sql/visitors.py", line 670, in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/sql/ddl.py", line 900, in visit_metadata
+    collection = sort_tables_and_constraints(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/sql/ddl.py", line 1330, in sort_tables_and_constraints
+    dependent_on = fkc.referred_table
+                   ^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/sql/schema.py", line 4736, in referred_table
+    return self.elements[0].column.table
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py", line 1138, in __get__
+    obj.__dict__[self.__name__] = result = self.fget(obj)
+                                           ^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/sql/schema.py", line 3144, in column
+    return self._resolve_column()
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/sqlalchemy/sql/schema.py", line 3167, in _resolve_column
+    raise exc.NoReferencedTableError(
+sqlalchemy.exc.NoReferencedTableError: Foreign key associated with column 'tech_scan.scan_id' could not find table 'scan' with which to generate a foreign key to target column 'id'
